@@ -1,5 +1,6 @@
 package com.bignerdranch.android.nerdranchphotogallery;
 
+import android.content.res.Configuration;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -43,11 +44,19 @@ public class PhotoGalleryFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) view.findViewById(R.id.fragment_photo_gallery_recycler_view);
-        mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
+        mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), getColumnCount()));
 
         setupAdapter();
 
         return view;
+    }
+
+    private int getColumnCount() {
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            return 5;
+        } else {
+            return 3;
+        }
     }
 
     private void setupAdapter() {
