@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,8 +21,9 @@ public class PhotoGalleryFragment extends Fragment {
 
     private static final String TAG = "PhotoGalleryFragment";
     private List<GalleryItem> mItems = new ArrayList<>();
-
     private RecyclerView mPhotoRecyclerView;
+    private boolean mLoadingPhotos;
+    private int mJsonPageNumber;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -31,7 +33,9 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        new FetchItemsTask().execute();
+        mLoadingPhotos = true;
+        mJsonPageNumber = 1;
+        new FetchItemsTask(mJsonPageNumber).execute();
     }
 
     @Override
@@ -48,25 +52,61 @@ public class PhotoGalleryFragment extends Fragment {
 
     private void setupAdapter() {
         if (isAdded()) {
-            mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
+            PhotoAdapter adapter = (PhotoAdapter) mPhotoRecyclerView.getAdapter();
+            if (adapter != null && adapter.mGalleryItems.size() > 0) {
+                adapter.mGalleryItems.addAll(mItems);
+                mPhotoRecyclerView.setAdapter(adapter);
+                mPhotoRecyclerView.getLayoutManager().scrollToPosition( (mJsonPageNumber - 1) * 100);
+
+            } else {
+                mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
+            }
+
+
+            mPhotoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+
+                    if (dy > 0) {
+                        GridLayoutManager layoutManager = (GridLayoutManager) mPhotoRecyclerView.getLayoutManager();
+                        int visibleItemCount = layoutManager.getChildCount();
+                        int totalItemCount = layoutManager.getItemCount();
+                        int pastVisibleItems = layoutManager.findFirstVisibleItemPosition();
+
+                        if (!mLoadingPhotos) {
+                            if ((visibleItemCount + pastVisibleItems) >= totalItemCount) {
+                                mLoadingPhotos = true;
+                                Log.i(TAG, "Reached Bottom of screen! Loading more photos.");
+                                new FetchItemsTask(mJsonPageNumber).execute();
+                            }
+                        }
+                    }
+
+                }
+            });
         }
     }
 
 
 
-
-
     private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>>  {
+
+        private int mPageNumber;
+
+        public FetchItemsTask(int pageNumber) {
+            mPageNumber = pageNumber;
+        }
 
         @Override
         protected List<GalleryItem> doInBackground(Void... voids) {
-            return new FlickrFetchr().fetchItems();
+            return new FlickrFetchr().fetchItems(mPageNumber);
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem> items) {
             mItems = items;
             setupAdapter();
+            mJsonPageNumber++;
+            mLoadingPhotos = false;
         }
     }
 
