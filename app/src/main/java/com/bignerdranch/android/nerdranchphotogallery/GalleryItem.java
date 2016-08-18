@@ -4,21 +4,22 @@ package com.bignerdranch.android.nerdranchphotogallery;
  * Created by TMiller on 8/17/2016.
  */
 public class GalleryItem {
-    private String mCaption;
-    private String mId;
-    private String mUrl;
+    private String title;
+    private String id;
+    private String url_s;
 
     @Override
     public String toString() {
-        return mCaption;
+        return title;
     }
 
-    public String getCaption() { return mCaption; }
-    public void setCaption(String caption) { mCaption = caption; }
 
-    public String getId() { return mId; }
-    public void setId(String id) { mId = id; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public String getUrl() { return mUrl; }
-    public void setUrl(String url) { mUrl = url; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public String getUrl_s() { return url_s; }
+    public void setUrl_s(String url_s) { this.url_s = url_s; }
 }
