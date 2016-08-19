@@ -1,11 +1,14 @@
 package com.bignerdranch.android.nerdranchphotogallery;
 
+import android.app.ActivityManager;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
+import android.util.LruCache;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,6 +25,8 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     private boolean mHasQuit = false;
     private Handler mRequestHandler;
     private Handler mResponseHandler;
+    private Context mContext;
+    private ThumbnailCache mCache;
     private ThumbnailDownloadListener<T> mThumbnailDownloadListener;
     private ConcurrentMap<T, String> mRequestMap = new ConcurrentHashMap<>();
 
@@ -30,9 +35,11 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         void onThumbnailDownloaded(T target, Bitmap thumbnail);
     }
 
-    public ThumbnailDownloader(Handler responseHandler) {
+    public ThumbnailDownloader(Handler responseHandler, Context context) {
         super(TAG);
         mResponseHandler = responseHandler;
+        mContext = context;
+        mCache = new ThumbnailCache(calculateMemoryAvailable());
     }
 
     @Override
@@ -99,6 +106,30 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
     public void setThumbnailDownloadListener(ThumbnailDownloadListener<T> listener) {
         mThumbnailDownloadListener = listener;
+    }
+
+    private int calculateMemoryAvailable() {
+        ActivityManager am = (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
+        int availMemInBytes = am.getMemoryClass() * 1024 * 1024;
+        availMemInBytes = availMemInBytes / 8;
+
+        return availMemInBytes;
+    }
+
+
+    private class ThumbnailCache extends LruCache<String,Bitmap> {
+
+        private LruCache<String,Bitmap> mCache;
+
+        public ThumbnailCache(int maxSize) {
+            super(maxSize);
+        }
+
+        @Override
+        protected int sizeOf(String key, Bitmap value) {
+            return value.getByteCount();
+        }
+
     }
 
 }

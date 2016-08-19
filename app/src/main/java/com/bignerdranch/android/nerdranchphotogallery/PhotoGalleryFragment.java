@@ -44,7 +44,7 @@ public class PhotoGalleryFragment extends Fragment {
         new FetchItemsTask(mJsonPageNumber).execute();
 
         Handler responseHandler = new Handler();
-        mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
+        mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler, getActivity());
         mThumbnailDownloader.setThumbnailDownloadListener(new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() {
             @Override
             public void onThumbnailDownloaded(PhotoHolder photoHolder, Bitmap thumbnail) {
