@@ -20,6 +20,9 @@ public class GalleryItem {
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
-    public String getUrl_s() { return url_s; }
+    public String getUrl_s() {
+        if (url_s == null) { return ""; }
+        return url_s;
+    }
     public void setUrl_s(String url_s) { this.url_s = url_s; }
 }

@@ -1,9 +1,12 @@
 package com.bignerdranch.android.nerdranchphotogallery;
 
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -24,6 +27,7 @@ public class PhotoGalleryFragment extends Fragment {
     private static final String TAG = "PhotoGalleryFragment";
     private List<GalleryItem> mItems = new ArrayList<>();
     private RecyclerView mPhotoRecyclerView;
+    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
     private boolean mLoadingPhotos;
     private int mJsonPageNumber;
 
@@ -38,6 +42,19 @@ public class PhotoGalleryFragment extends Fragment {
         mLoadingPhotos = true;
         mJsonPageNumber = 1;
         new FetchItemsTask(mJsonPageNumber).execute();
+
+        Handler responseHandler = new Handler();
+        mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
+        mThumbnailDownloader.setThumbnailDownloadListener(new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() {
+            @Override
+            public void onThumbnailDownloaded(PhotoHolder photoHolder, Bitmap thumbnail) {
+                Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
+                photoHolder.bindDrawable(drawable);
+            }
+        });
+        mThumbnailDownloader.start();
+        mThumbnailDownloader.getLooper();
+        Log.i(TAG, "Background looper thread started.");
     }
 
     @Override
@@ -50,6 +67,19 @@ public class PhotoGalleryFragment extends Fragment {
         setupAdapter();
 
         return view;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mThumbnailDownloader.clearQueue();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mThumbnailDownloader.quit();
+        Log.i(TAG, "Background looper thread destroyed.");
     }
 
     private int getColumnCount() {
@@ -97,11 +127,14 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
 
-
+    /*
+        This class initiates the collecting of data remotely. Utilizing a background thread.
+     */
     private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>>  {
 
         private int mPageNumber;
 
+        // for paging purposes, pass in the page number we want to receive.
         public FetchItemsTask(int pageNumber) {
             mPageNumber = pageNumber;
         }
@@ -154,6 +187,7 @@ public class PhotoGalleryFragment extends Fragment {
             GalleryItem galleryItem = mGalleryItems.get(position);
             Drawable placeHolder = getResources().getDrawable(R.mipmap.eli);
             holder.bindDrawable(placeHolder);
+            mThumbnailDownloader.queueThumbnail(holder, galleryItem.getUrl_s());
         }
 
         @Override
