@@ -80,24 +80,36 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             if (url == null) {
                 return;
             }
-            byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
-            final Bitmap bitmap = BitmapFactory
-                    .decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
-            Log.i(TAG, "Bitmap created");
 
-            mResponseHandler.post(new Runnable() {
-                public void run() {
-                    if (mRequestMap.get(target) != url || mHasQuit) {
-                        return;
-                    }
-                    mRequestMap.remove(target);
-                    mThumbnailDownloadListener.onThumbnailDownloaded(target, bitmap);
-                }
-            });
+            final Bitmap cachedBitmap = mCache.get(url);
+            if (cachedBitmap == null) {
+                byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
+                final Bitmap bitmap = BitmapFactory
+                        .decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                Log.i(TAG, "Bitmap created");
+                mCache.put(url, bitmap);
+                Log.i(TAG, "Bitmap added to Cache.");
+                sendBitmapToUIResponseHandler(target, bitmap);
+            } else {
+                Log.i(TAG, "Using cached bitmap");
+                sendBitmapToUIResponseHandler(target, cachedBitmap);
+            }
 
         } catch (IOException ioe) {
             Log.e(TAG, "Error downloading image", ioe);
         }
+    }
+
+    private void sendBitmapToUIResponseHandler(final T target, final Bitmap bitmap) {
+        mResponseHandler.post(new Runnable() {
+            public void run() {
+                if (mHasQuit /*|| mRequestMap.get(target) != url*/) {
+                    return;
+                }
+                mRequestMap.remove(target);
+                mThumbnailDownloadListener.onThumbnailDownloaded(target, bitmap);
+            }
+        });
     }
 
     public void clearQueue() {
@@ -129,6 +141,8 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         protected int sizeOf(String key, Bitmap value) {
             return value.getByteCount();
         }
+
+
 
     }
 
