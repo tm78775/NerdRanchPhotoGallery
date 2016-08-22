@@ -16,6 +16,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import com.squareup.picasso.Picasso;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -171,6 +173,13 @@ public class PhotoGalleryFragment extends Fragment {
 
         public void bindDrawable(Drawable drawable) {
             mItemImageView.setImageDrawable(drawable);
+        }
+
+        public void bindGalleryItem(GalleryItem galleryItem) {
+            Picasso.with(getActivity())
+                .load(galleryItem.getUrl_s())
+                .placeholder(R.mipmap.eli)
+                .into(mItemImageView);
         }
     }
 
