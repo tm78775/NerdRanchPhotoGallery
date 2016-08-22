@@ -30,6 +30,7 @@ public class PhotoGalleryFragment extends Fragment {
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
     private boolean mLoadingPhotos;
     private int mJsonPageNumber;
+    private boolean mReadyToPreload;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -39,9 +40,8 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        mLoadingPhotos = true;
         mJsonPageNumber = 1;
-        new FetchItemsTask(mJsonPageNumber).execute();
+        prepareFetchItemsTask();
 
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler, getActivity());
@@ -52,6 +52,7 @@ public class PhotoGalleryFragment extends Fragment {
                 photoHolder.bindDrawable(drawable);
             }
         });
+
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
         Log.i(TAG, "Background looper thread started.");
@@ -102,7 +103,6 @@ public class PhotoGalleryFragment extends Fragment {
                 mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
             }
 
-
             mPhotoRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
                 public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
 
@@ -114,9 +114,8 @@ public class PhotoGalleryFragment extends Fragment {
 
                         if (!mLoadingPhotos) {
                             if ((visibleItemCount + pastVisibleItems) >= totalItemCount) {
-                                mLoadingPhotos = true;
                                 Log.i(TAG, "Reached Bottom of screen! Loading more photos.");
-                                new FetchItemsTask(mJsonPageNumber).execute();
+                                prepareFetchItemsTask();
                             }
                         }
                     }
@@ -124,6 +123,12 @@ public class PhotoGalleryFragment extends Fragment {
                 }
             });
         }
+    }
+
+    private void prepareFetchItemsTask() {
+        mLoadingPhotos = true;
+        mReadyToPreload = false;
+        new FetchItemsTask(mJsonPageNumber).execute();
     }
 
 
@@ -146,10 +151,12 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         protected void onPostExecute(List<GalleryItem> items) {
+            mItems = null;
             mItems = items;
             setupAdapter();
             mJsonPageNumber++;
             mLoadingPhotos = false;
+            mReadyToPreload = true;
         }
     }
 
@@ -188,11 +195,28 @@ public class PhotoGalleryFragment extends Fragment {
             Drawable placeHolder = getResources().getDrawable(R.mipmap.eli);
             holder.bindDrawable(placeHolder);
             mThumbnailDownloader.queueThumbnail(holder, galleryItem.getUrl_s());
+            if ( mReadyToPreload && (position > 12 && position % 10 == 0) ) {
+                preloadImages(position);
+            }
         }
 
         @Override
         public int getItemCount() {
             return mGalleryItems.size();
+        }
+
+        private void preloadImages(int startPosition) {
+            if (startPosition > 3) {
+                int endPosition = startPosition + 20;
+                if (endPosition > mGalleryItems.size() - 1) {
+                    endPosition = startPosition + ((mGalleryItems.size() - 1) - startPosition);
+                }
+
+                for (int i = startPosition; i < endPosition; i++) {
+                    String url = mGalleryItems.get(i).getUrl_s();
+                    mThumbnailDownloader.queueImageForPreload(url);
+                }
+            }
         }
     }
 }
