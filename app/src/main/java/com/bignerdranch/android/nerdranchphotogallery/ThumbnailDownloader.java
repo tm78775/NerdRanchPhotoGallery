@@ -35,15 +35,14 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     private ThumbnailDownloadListener<T> mThumbnailDownloadListener;
     private ConcurrentMap<T, String> mRequestMap = new ConcurrentHashMap<>();
     private List<String> mImagePreloadList = Collections.synchronizedList(new ArrayList<String>());
-    private boolean mReadyToPreloadImages = false;
 
 
     public interface ThumbnailDownloadListener<T> {
         void onThumbnailDownloaded(T target, Bitmap thumbnail);
     }
 
-    public void setReadyToPreloadImages(boolean ready) {
-        mReadyToPreloadImages = ready;
+    public void setThumbnailDownloadListener(ThumbnailDownloadListener<T> listener) {
+        mThumbnailDownloadListener = listener;
     }
 
     public ThumbnailDownloader(Handler responseHandler, Context context) {
@@ -181,10 +180,6 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
     public void clearQueue() {
         mRequestHandler.removeMessages(MESSAGE_DOWNLOAD);
-    }
-
-    public void setThumbnailDownloadListener(ThumbnailDownloadListener<T> listener) {
-        mThumbnailDownloadListener = listener;
     }
 
     private int calculateMemoryAvailable() {
