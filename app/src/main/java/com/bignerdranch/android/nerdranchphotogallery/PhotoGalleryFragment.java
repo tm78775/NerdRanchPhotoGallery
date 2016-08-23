@@ -1,5 +1,6 @@
 package com.bignerdranch.android.nerdranchphotogallery;
 
+import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -18,7 +19,9 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 
 import com.squareup.picasso.Picasso;
 
@@ -37,6 +40,7 @@ public class PhotoGalleryFragment extends Fragment {
     private boolean mLoadingPhotos;
     private int mJsonPageNumber;
     private boolean mReadyToPreload;
+    private ProgressBar spinner;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -72,6 +76,9 @@ public class PhotoGalleryFragment extends Fragment {
         mPhotoRecyclerView = (RecyclerView) view.findViewById(R.id.fragment_photo_gallery_recycler_view);
         mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), getColumnCount()));
 
+        spinner = (ProgressBar) view.findViewById(R.id.progressBar1);
+        spinner.setVisibility(View.GONE);
+
         setupAdapter();
 
         return view;
@@ -90,6 +97,19 @@ public class PhotoGalleryFragment extends Fragment {
                 Log.d(TAG, "QueryTextSubmit: " + query);
                 QueryPreferences.setStoredQuery(getActivity(), query);
                 mJsonPageNumber = 1;
+
+                // hide the keyboard.
+                InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(getView().getWindowToken(), 0);
+                }
+                // collapse the searchView.
+                searchView.onActionViewCollapsed();
+                // clear the recyclerView.
+                clearRecyclerView();
+                // show the spinner while loading.
+                spinner.setVisibility(View.VISIBLE);
+
                 updateItems();
                 return true;
             }
@@ -131,6 +151,11 @@ public class PhotoGalleryFragment extends Fragment {
         super.onDestroy();
         mThumbnailDownloader.quit();
         Log.i(TAG, "Background looper thread destroyed.");
+    }
+
+    private void clearRecyclerView() {
+        PhotoAdapter recyclerAdapter = (PhotoAdapter) mPhotoRecyclerView.getAdapter();
+        recyclerAdapter.clearRecyclerView();
     }
 
     public void updateItems() {
@@ -220,6 +245,7 @@ public class PhotoGalleryFragment extends Fragment {
             mJsonPageNumber++;
             mLoadingPhotos = false;
             mReadyToPreload = true;
+            spinner.setVisibility(View.GONE);
         }
     }
 
@@ -289,6 +315,11 @@ public class PhotoGalleryFragment extends Fragment {
                     mThumbnailDownloader.queueImageForPreload(url);
                 }
             }
+        }
+
+        public void clearRecyclerView() {
+            mGalleryItems = new ArrayList<GalleryItem>();
+            notifyDataSetChanged();
         }
     }
 }
