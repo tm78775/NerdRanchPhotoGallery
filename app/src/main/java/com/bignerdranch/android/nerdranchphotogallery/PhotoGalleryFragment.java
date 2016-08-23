@@ -203,10 +203,12 @@ public class PhotoGalleryFragment extends Fragment {
             GalleryItem galleryItem = mGalleryItems.get(position);
             Drawable placeHolder = getResources().getDrawable(R.mipmap.eli);
             holder.bindDrawable(placeHolder);
-            mThumbnailDownloader.queueThumbnail(holder, galleryItem.getUrl_s());
-            if ( mReadyToPreload && (position > 12 && position % 10 == 0) ) {
-                preloadImages(position);
-            }
+            holder.bindGalleryItem(galleryItem);
+
+            // mThumbnailDownloader.queueThumbnail(holder, galleryItem.getUrl_s());
+            // if ( mReadyToPreload && (position > 12 && position % 10 == 0) ) {
+            //     preloadImages(position);
+            // }
         }
 
         @Override
