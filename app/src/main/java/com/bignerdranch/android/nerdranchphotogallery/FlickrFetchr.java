@@ -98,8 +98,8 @@ public class FlickrFetchr {
         return downloadGalleryItems(url);
     }
 
-    public List<GalleryItem> searchPhotos(String query) {
-        String url = buildUrl(SEARCH_METHOD, query, 0);
+    public List<GalleryItem> searchPhotos(String query, int pageNumber) {
+        String url = buildUrl(SEARCH_METHOD, query, pageNumber);
         Log.i(TAG, "URL generated to search photos: " + url);
         return downloadGalleryItems(url);
     }
@@ -110,6 +110,9 @@ public class FlickrFetchr {
 
         if (method.equals(SEARCH_METHOD)) {
             uriBuilder.appendQueryParameter("text", query);
+            if (pageNumber > 0) {
+                uriBuilder.appendQueryParameter("page", Integer.toString(pageNumber));
+            }
         }
 
         if (method.equals(FETCH_RECENTS_METHOD)) {

@@ -40,7 +40,8 @@ public class PhotoGalleryFragment extends Fragment {
     private boolean mLoadingPhotos;
     private int mJsonPageNumber;
     private boolean mReadyToPreload;
-    private ProgressBar spinner;
+    private ProgressBar mSpinner;
+    private boolean mUseSearchParameters;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -52,6 +53,7 @@ public class PhotoGalleryFragment extends Fragment {
         setRetainInstance(true);
         setHasOptionsMenu(true);
         mJsonPageNumber = 1;
+        mUseSearchParameters = false;
         prepareFetchItemsTask();
 
         Handler responseHandler = new Handler();
@@ -76,8 +78,8 @@ public class PhotoGalleryFragment extends Fragment {
         mPhotoRecyclerView = (RecyclerView) view.findViewById(R.id.fragment_photo_gallery_recycler_view);
         mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), getColumnCount()));
 
-        spinner = (ProgressBar) view.findViewById(R.id.progressBar1);
-        spinner.setVisibility(View.GONE);
+        mSpinner = (ProgressBar) view.findViewById(R.id.progressBar1);
+        mSpinner.setVisibility(View.VISIBLE);
 
         setupAdapter();
 
@@ -97,6 +99,7 @@ public class PhotoGalleryFragment extends Fragment {
                 Log.d(TAG, "QueryTextSubmit: " + query);
                 QueryPreferences.setStoredQuery(getActivity(), query);
                 mJsonPageNumber = 1;
+                mUseSearchParameters = true;
 
                 // hide the keyboard.
                 InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -108,7 +111,7 @@ public class PhotoGalleryFragment extends Fragment {
                 // clear the recyclerView.
                 clearRecyclerView();
                 // show the spinner while loading.
-                spinner.setVisibility(View.VISIBLE);
+                mSpinner.setVisibility(View.VISIBLE);
 
                 updateItems();
                 return true;
@@ -126,6 +129,7 @@ public class PhotoGalleryFragment extends Fragment {
                 searchView.setQuery(query, false);
             }
         });
+
     }
 
     @Override
@@ -133,7 +137,10 @@ public class PhotoGalleryFragment extends Fragment {
         switch (item.getItemId()) {
             case R.id.menu_item_clear:
                 QueryPreferences.setStoredQuery(getActivity(), null);
-                updateItems();
+                mJsonPageNumber = 1;
+                mUseSearchParameters = false;
+                clearRecyclerView();
+                prepareFetchItemsTask();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -159,6 +166,7 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     public void updateItems() {
+        mLoadingPhotos = true;
         String query = QueryPreferences.getStoredQuery(getActivity());
         new FetchItemsTask(mJsonPageNumber, query).execute();
     }
@@ -177,8 +185,6 @@ public class PhotoGalleryFragment extends Fragment {
             if (adapter != null && adapter.mGalleryItems.size() > 0) {
                 adapter.mGalleryItems.addAll(mItems);
                 mPhotoRecyclerView.setAdapter(adapter);
-                mPhotoRecyclerView.getLayoutManager().scrollToPosition( (mJsonPageNumber - 1) * 100);
-
             } else {
                 mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
             }
@@ -195,7 +201,12 @@ public class PhotoGalleryFragment extends Fragment {
                         if (!mLoadingPhotos) {
                             if ((visibleItemCount + pastVisibleItems) >= totalItemCount) {
                                 Log.i(TAG, "Reached Bottom of screen! Loading more photos.");
-                                prepareFetchItemsTask();
+
+                                if (mUseSearchParameters) {
+                                    updateItems();
+                                } else {
+                                    prepareFetchItemsTask();
+                                }
                             }
                         }
                     }
@@ -206,11 +217,18 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     private void prepareFetchItemsTask() {
+        if (mSpinner != null) {
+            mSpinner.setVisibility(View.VISIBLE);
+        }
         mLoadingPhotos = true;
         mReadyToPreload = false;
         new FetchItemsTask(mJsonPageNumber, null).execute();
     }
 
+    private void updateAdapter(List<GalleryItem> items) {
+        PhotoAdapter adapter = (PhotoAdapter) mPhotoRecyclerView.getAdapter();
+        adapter.addItemsToAdapter(items);
+    }
 
     /*
         This class initiates the collecting of data remotely. Utilizing a background thread.
@@ -232,20 +250,19 @@ public class PhotoGalleryFragment extends Fragment {
             if (mQuery == null) {
                 return new FlickrFetchr().fetchRecentPhotos(mPageNumber);
             } else {
-                return new FlickrFetchr().searchPhotos(mQuery);
+                return new FlickrFetchr().searchPhotos(mQuery, mPageNumber);
             }
 
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem> items) {
-            mItems = null;
             mItems = items;
-            setupAdapter();
+            updateAdapter(items);
             mJsonPageNumber++;
             mLoadingPhotos = false;
             mReadyToPreload = true;
-            spinner.setVisibility(View.GONE);
+            mSpinner.setVisibility(View.GONE);
         }
     }
 
@@ -276,6 +293,13 @@ public class PhotoGalleryFragment extends Fragment {
 
         public PhotoAdapter(List<GalleryItem> galleryItems) {
             mGalleryItems = galleryItems;
+        }
+
+        public void addItemsToAdapter(List<GalleryItem> galleryItems) {
+            for (int i = 0; i < galleryItems.size(); i++) {
+                mGalleryItems.add(galleryItems.get(i));
+            }
+            notifyDataSetChanged();
         }
 
         @Override
@@ -318,7 +342,7 @@ public class PhotoGalleryFragment extends Fragment {
         }
 
         public void clearRecyclerView() {
-            mGalleryItems = new ArrayList<GalleryItem>();
+            mGalleryItems = new ArrayList<>();
             notifyDataSetChanged();
         }
     }
