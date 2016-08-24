@@ -2,12 +2,9 @@ package com.bignerdranch.android.nerdranchphotogallery;
 
 import android.content.Context;
 import android.content.res.Configuration;
-import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -35,13 +32,12 @@ public class PhotoGalleryFragment extends Fragment {
 
     private static final String TAG = "PhotoGalleryFragment";
     private List<GalleryItem> mItems = new ArrayList<>();
+
     private RecyclerView mPhotoRecyclerView;
-    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
-    private boolean mLoadingPhotos;
-    private int mJsonPageNumber;
-    private boolean mReadyToPreload;
-    private ProgressBar mSpinner;
-    private boolean mUseSearchParameters;
+    private boolean      mLoadingPhotos;
+    private int          mJsonPageNumber;
+    private ProgressBar  mSpinner;
+    private boolean      mUseSearchParameters;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -52,29 +48,18 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
         setHasOptionsMenu(true);
+
+        PollService.setServiceAlarm(getActivity(), true);
+
         mJsonPageNumber = 1;
         mUseSearchParameters = false;
         prepareFetchItemsTask();
-
-        Handler responseHandler = new Handler();
-        mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler, getActivity());
-        mThumbnailDownloader.setThumbnailDownloadListener(new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() {
-            @Override
-            public void onThumbnailDownloaded(PhotoHolder photoHolder, Bitmap thumbnail) {
-                Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
-                photoHolder.bindDrawable(drawable);
-            }
-        });
-
-        mThumbnailDownloader.start();
-        mThumbnailDownloader.getLooper();
-        Log.i(TAG, "Background looper thread started.");
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
-        View view = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
+        View view          = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) view.findViewById(R.id.fragment_photo_gallery_recycler_view);
         mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), getColumnCount()));
 
@@ -93,6 +78,7 @@ public class PhotoGalleryFragment extends Fragment {
 
         MenuItem item = menu.findItem(R.id.menu_item_search);
         final SearchView searchView = (SearchView) item.getActionView();
+
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -113,7 +99,7 @@ public class PhotoGalleryFragment extends Fragment {
                 // show the spinner while loading.
                 mSpinner.setVisibility(View.VISIBLE);
 
-                updateItems();
+                queryUsingSearchParams();
                 return true;
             }
 
@@ -136,6 +122,7 @@ public class PhotoGalleryFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_item_clear:
+                mSpinner.setVisibility(View.VISIBLE);
                 QueryPreferences.setStoredQuery(getActivity(), null);
                 mJsonPageNumber = 1;
                 mUseSearchParameters = false;
@@ -147,25 +134,12 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        mThumbnailDownloader.clearQueue();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        mThumbnailDownloader.quit();
-        Log.i(TAG, "Background looper thread destroyed.");
-    }
-
     private void clearRecyclerView() {
         PhotoAdapter recyclerAdapter = (PhotoAdapter) mPhotoRecyclerView.getAdapter();
         recyclerAdapter.clearRecyclerView();
     }
 
-    public void updateItems() {
+    public void queryUsingSearchParams() {
         mLoadingPhotos = true;
         String query = QueryPreferences.getStoredQuery(getActivity());
         new FetchItemsTask(mJsonPageNumber, query).execute();
@@ -182,6 +156,7 @@ public class PhotoGalleryFragment extends Fragment {
     private void setupAdapter() {
         if (isAdded()) {
             PhotoAdapter adapter = (PhotoAdapter) mPhotoRecyclerView.getAdapter();
+
             if (adapter != null && adapter.mGalleryItems.size() > 0) {
                 adapter.mGalleryItems.addAll(mItems);
                 mPhotoRecyclerView.setAdapter(adapter);
@@ -194,8 +169,9 @@ public class PhotoGalleryFragment extends Fragment {
 
                     if (dy > 0) {
                         GridLayoutManager layoutManager = (GridLayoutManager) mPhotoRecyclerView.getLayoutManager();
+
                         int visibleItemCount = layoutManager.getChildCount();
-                        int totalItemCount = layoutManager.getItemCount();
+                        int totalItemCount   = layoutManager.getItemCount();
                         int pastVisibleItems = layoutManager.findFirstVisibleItemPosition();
 
                         if (!mLoadingPhotos) {
@@ -203,7 +179,7 @@ public class PhotoGalleryFragment extends Fragment {
                                 Log.i(TAG, "Reached Bottom of screen! Loading more photos.");
 
                                 if (mUseSearchParameters) {
-                                    updateItems();
+                                    queryUsingSearchParams();
                                 } else {
                                     prepareFetchItemsTask();
                                 }
@@ -217,15 +193,11 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     private void prepareFetchItemsTask() {
-        if (mSpinner != null) {
-            mSpinner.setVisibility(View.VISIBLE);
-        }
         mLoadingPhotos = true;
-        mReadyToPreload = false;
         new FetchItemsTask(mJsonPageNumber, null).execute();
     }
 
-    private void updateAdapter(List<GalleryItem> items) {
+    private void addItemsToAdapter(List<GalleryItem> items) {
         PhotoAdapter adapter = (PhotoAdapter) mPhotoRecyclerView.getAdapter();
         adapter.addItemsToAdapter(items);
     }
@@ -258,10 +230,9 @@ public class PhotoGalleryFragment extends Fragment {
         @Override
         protected void onPostExecute(List<GalleryItem> items) {
             mItems = items;
-            updateAdapter(items);
+            addItemsToAdapter(items);
             mJsonPageNumber++;
             mLoadingPhotos = false;
-            mReadyToPreload = true;
             mSpinner.setVisibility(View.GONE);
         }
     }
@@ -316,10 +287,9 @@ public class PhotoGalleryFragment extends Fragment {
             holder.bindDrawable(placeHolder);
             holder.bindGalleryItem(galleryItem);
 
-            // mThumbnailDownloader.queueThumbnail(holder, galleryItem.getUrl_s());
-            // if ( mReadyToPreload && (position > 12 && position % 10 == 0) ) {
-            //     preloadImages(position);
-            // }
+            if (!mLoadingPhotos && (position > 12 && position % 10 == 0)) {
+                preloadImages(position);
+            }
         }
 
         @Override
@@ -336,7 +306,9 @@ public class PhotoGalleryFragment extends Fragment {
 
                 for (int i = startPosition; i < endPosition; i++) {
                     String url = mGalleryItems.get(i).getUrl_s();
-                    mThumbnailDownloader.queueImageForPreload(url);
+                    Picasso.with(getActivity())
+                            .load(url)
+                            .fetch();
                 }
             }
         }

@@ -116,7 +116,9 @@ public class FlickrFetchr {
         }
 
         if (method.equals(FETCH_RECENTS_METHOD)) {
-            uriBuilder.appendQueryParameter("page", Integer.toString(pageNumber));
+            if (pageNumber > 0) {
+                uriBuilder.appendQueryParameter("page", Integer.toString(pageNumber));
+            }
         }
 
         return uriBuilder.build().toString();
