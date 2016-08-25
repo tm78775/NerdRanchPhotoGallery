@@ -49,8 +49,6 @@ public class PhotoGalleryFragment extends Fragment {
         setRetainInstance(true);
         setHasOptionsMenu(true);
 
-        PollService.setServiceAlarm(getActivity(), true);
-
         mJsonPageNumber = 1;
         mUseSearchParameters = false;
         prepareFetchItemsTask();
@@ -75,6 +73,13 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_photo_gallery, menu);
+
+        MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
+        if (PollService.isServiceAlarmOn(getActivity())) {
+            toggleItem.setTitle(R.string.stop_polling);
+        } else {
+            toggleItem.setTitle(R.string.start_polling);
+        }
 
         MenuItem item = menu.findItem(R.id.menu_item_search);
         final SearchView searchView = (SearchView) item.getActionView();
@@ -128,6 +133,11 @@ public class PhotoGalleryFragment extends Fragment {
                 mUseSearchParameters = false;
                 clearRecyclerView();
                 prepareFetchItemsTask();
+                return true;
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                getActivity().invalidateOptionsMenu();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
