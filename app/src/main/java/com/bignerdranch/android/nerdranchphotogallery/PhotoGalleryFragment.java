@@ -1,6 +1,7 @@
 package com.bignerdranch.android.nerdranchphotogallery;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
@@ -246,13 +247,15 @@ public class PhotoGalleryFragment extends VisibleFragment {
         }
     }
 
-    private class PhotoHolder extends RecyclerView.ViewHolder {
+    private class PhotoHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
         private ImageView mItemImageView;
+        private GalleryItem mGalleryItem;
 
         public PhotoHolder(View itemView) {
             super(itemView);
             mItemImageView = (ImageView) itemView.findViewById(R.id.fragment_photo_gallery_image_view);
+            itemView.setOnClickListener(this);
         }
 
         public void bindDrawable(Drawable drawable) {
@@ -260,10 +263,17 @@ public class PhotoGalleryFragment extends VisibleFragment {
         }
 
         public void bindGalleryItem(GalleryItem galleryItem) {
+            mGalleryItem = galleryItem;
             Picasso.with(getActivity())
                 .load(galleryItem.getUrl_s())
                 .placeholder(R.mipmap.eli)
                 .into(mItemImageView);
+        }
+
+        @Override
+        public void onClick(View v) {
+            Intent i = PhotoPageActivity.newInstance(getActivity(), mGalleryItem.getPhotoPageUri());
+            startActivity(i);
         }
     }
 
@@ -292,9 +302,9 @@ public class PhotoGalleryFragment extends VisibleFragment {
         @Override
         public void onBindViewHolder(PhotoHolder holder, int position) {
             GalleryItem galleryItem = mGalleryItems.get(position);
+            holder.bindGalleryItem(galleryItem);
             Drawable placeHolder = getResources().getDrawable(R.mipmap.eli);
             holder.bindDrawable(placeHolder);
-            holder.bindGalleryItem(galleryItem);
 
             if (!mLoadingPhotos && (position > 12 && position % 10 == 0)) {
                 preloadImages(position);
