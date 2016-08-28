@@ -28,8 +28,11 @@ public class PhotoPageFragment extends VisibleFragment {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // todo: this getParcelable always returns null. Figure out why.
         super.onCreate(savedInstanceState);
-        mUri = savedInstanceState.getParcelable(ARG_URI);
+        if (savedInstanceState != null) {
+            mUri = savedInstanceState.getParcelable(ARG_URI);
+        }
     }
 
     @Override
