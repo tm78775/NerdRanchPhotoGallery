@@ -1,5 +1,6 @@
 package com.bignerdranch.android.nerdranchphotogallery;
 
+import android.app.Activity;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -16,11 +17,16 @@ import android.widget.ProgressBar;
  */
 public class PhotoPageFragment extends VisibleFragment {
 
+    public interface Callbacks {
+        boolean onBackButtonCalled();
+    }
+
     private static final String ARG_URI = "photo_page_url";
 
     private Uri mUri;
     private WebView mWebView;
     private ProgressBar mProgressBar;
+    private Callbacks mCallbacks;
 
     public static PhotoPageFragment newInstance(Uri uri) {
         Bundle args = new Bundle();
@@ -72,4 +78,26 @@ public class PhotoPageFragment extends VisibleFragment {
         return view;
     }
 
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        mCallbacks = (Callbacks) activity;
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        mCallbacks = null;
+    }
+
+    // this method will check the webview to check if it can navigate backwards.
+    // if it cannot, it will return true, and the hosting activity will call super.onBackPressed.
+    public boolean onBackButtonCalled() {
+        if (mWebView.canGoBack()) {
+            mWebView.goBack();
+            return false;
+        } else {
+            return true;
+        }
+    }
 }
